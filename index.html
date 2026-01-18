@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KOL 專業數據管理面板</title>
+    <style>
+        :root { 
+            --primary: #f97316; 
+            --bg: #fffaf5; 
+            --text-main: #431407; 
+            --header-bg: #fdba74; 
+        }
+
+        body { font-family: "PingFang TC", "Microsoft JhengHei", sans-serif; background: var(--bg); padding: 15px; margin: 0; color: var(--text-main); }
+        .card { background: white; border-radius: 16px; box-shadow: 0 4px 20px rgba(251, 146, 60, 0.1); padding: 18px; max-width: 1200px; margin: auto; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #ffedd5; padding-bottom: 15px; flex-wrap: wrap; gap: 10px; }
+        
+        table { width: 100%; border-collapse: collapse; }
+        th { padding: 14px 4px; text-align: left; font-size: 13px; font-weight: 600; color: #7c2d12; letter-spacing: 0.5px; cursor: pointer; user-select: none; }
+        .th-basic { background-color: #ffedd5; }
+        .th-data { background-color: #fed7aa; }
+        .th-flow { background-color: #fdba74; }
+        .th-action { background-color: #ffedd5; text-align: center; }
+
+        td { padding: 8px 4px; border-bottom: 1px solid #fff7ed; }
+        input, select { width: 100%; height: 34px; border: 1px solid #fed7aa; padding: 0 8px; border-radius: 8px; font-size: 14px; box-sizing: border-box; outline: none; background: #fff; transition: all 0.2s ease; }
+
+        /* --- 合作進度色塊樣式 (適用於預設狀態) --- */
+        .p-gray { background-color: #f1f5f9 !important; color: #64748b !important; border: 1.5px solid #cbd5e1 !important; }
+        .p-blue { background-color: #e0f2fe !important; color: #0369a1 !important; border: 1.5px solid #bae6fd !important; font-weight: bold; }
+        .p-green { background-color: #dcfce7 !important; color: #15803d !important; border: 1.5px solid #bbf7d0 !important; font-weight: bold; }
+        .p-red { background-color: #fee2e2 !important; color: #b91c1c !important; border: 1.5px solid #fecaca !important; font-weight: bold; }
+
+        /* --- 簽呈狀態色塊樣式 (適用於預設狀態) --- */
+        .a-none { background-color: #ffffff !important; color: #94a3b8 !important; border: 1.5px solid #e2e8f0 !important; }
+        .a-orange { background-color: #fff7ed !important; color: #c2410c !important; border: 1.5px solid #fed7aa !important; font-weight: bold; }
+        .a-purple { background-color: #f5f3ff !important; color: #6d28d9 !important; border: 1.5px solid #ddd6fe !important; font-weight: bold; }
+        .a-teal { background-color: #f0fdfa !important; color: #0f766e !important; border: 1.5px solid #99f6e4 !important; font-weight: bold; }
+        .a-final { background-color: #f97316 !important; color: #ffffff !important; border: none !important; font-weight: bold; }
+
+        .btn-add { background: #f97316; color: white; border: none; padding: 10px 20px; border-radius: 10px; cursor: pointer; font-weight: 600; }
+        .btn-export { background: #fb923c; color: white; border: none; padding: 10px 20px; border-radius: 10px; cursor: pointer; font-weight: 600; }
+        
+        .data-price { text-align: right; font-weight: 700; color: #9a3412; }
+        .jump-btn { text-decoration: none; background: #fff7ed; color: #ea580c; padding: 0 8px; border-radius: 6px; font-size: 10px; display: none; }
+        .jump-btn.active { display: inline-block; }
+
+        /* 手機版 RWD */
+        @media screen and (max-width: 768px) {
+            table, thead, tbody, th, td, tr { display: block; }
+            thead tr { position: absolute; top: -9999px; left: -9999px; }
+            tr { border: 1px solid #fed7aa; border-radius: 12px; margin-bottom: 20px; padding: 10px; background: #fff; }
+            td { border: none; position: relative; padding-left: 100px; margin-bottom: 8px; min-height: 40px; display: flex; align-items: center; }
+            td:before { position: absolute; left: 10px; width: 85px; font-weight: bold; color: #7c2d12; font-size: 13px; content: attr(data-label); }
+            .th-action-cell { text-align: right; padding-left: 0; }
+            .th-action-cell:before { content: ""; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <div class="header">
+        <h2 style="margin:0; color:#431407; font-size: 20px;">KOL 數據管理系統</h2>
+        <div style="display:flex; gap:12px;">
+            <button class="btn-export" onclick="exportToExcel()">📥 匯出 Excel</button>
+            <button class="btn-add" onclick="addRow()">+ 新增 KOL 項目</button>
+        </div>
+    </div>
+
+    <table id="kolTable">
+        <thead>
+            <tr>
+                <th style="width: 10%;" class="th-basic">姓名</th>
+                <th style="width: 15%;" class="th-basic">IG 連結</th>
+                <th style="width: 15%;" class="th-basic">FB 連結</th>
+                <th style="width: 12%;" class="th-data" onclick="cycleSort()">報價 (TWD) <span id="sortIcon">🔃</span></th>
+                <th style="width: 13%;" class="th-flow">合作進度</th>
+                <th style="width: 15%;" class="th-flow">簽呈狀態</th>
+                <th style="width: 15%;" class="th-flow">預計匯款日</th>
+                <th style="width: 5%;" class="th-action"></th>
+            </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+    </table>
+</div>
+
+<script>
+    let sortState = 0; 
+
+    window.onload = function() {
+        const saved = localStorage.getItem('kol_data_save');
+        if (saved) {
+            JSON.parse(saved).forEach(item => addRow(item));
+        } else {
+            for(let i=0; i<5; i++) addRow();
+        }
+    };
+
+    function saveAll() {
+        const rows = Array.from(document.querySelectorAll("#tableBody tr"));
+        const data = rows.map(tr => {
+            const inputs = tr.querySelectorAll("input, select");
+            return {
+                name: inputs[0].value,
+                ig: inputs[1].value,
+                fb: inputs[2].value,
+                price: inputs[3].value,
+                process: inputs[4].value,
+                admin: inputs[5].value,
+                date: inputs[6].value
+            };
+        });
+        localStorage.setItem('kol_data_save', JSON.stringify(data));
+    }
+
+    function addRow(saved = null) {
+        const tbody = document.getElementById("tableBody");
+        const tr = document.createElement("tr");
+        const m = new Date().getMonth() + 1;
+        const nextM = m === 12 ? 1 : m + 1;
+
+        tr.innerHTML = `
+            <td data-label="姓名"><input type="text" value="${saved?.name || ''}" oninput="saveAll()" placeholder="姓名..."></td>
+            <td data-label="IG"><div style="display:flex; gap:4px; width:100%;"><input type="text" value="${saved?.ig || ''}" oninput="checkUrl(this); saveAll()" placeholder="ig..."><a href="${saved?.ig || '#'}" target="_blank" class="jump-btn ${saved?.ig ? 'active' : ''}">🔗</a></div></td>
+            <td data-label="FB"><div style="display:flex; gap:4px; width:100%;"><input type="text" value="${saved?.fb || ''}" oninput="checkUrl(this); saveAll()" placeholder="fb..."><a href="${saved?.fb || '#'}" target="_blank" class="jump-btn ${saved?.fb ? 'active' : ''}">🔗</a></div></td>
+            <td data-label="報價"><input type="text" class="data-price" value="${saved?.price || ''}" onblur="formatCurrency(this); saveAll()" onfocus="unformatCurrency(this)" placeholder="0"></td>
+            <td data-label="進度">
+                <select class="data-process" onchange="updateProcessColor(this); saveAll()">
+                    <option value="待聯繫" style="background-color: #f1f5f9; color: #64748b;" ${saved?.process === '待聯繫' ? 'selected' : ''}>待聯繫</option>
+                    <option value="洽談中" style="background-color: #e0f2fe; color: #0369a1;" ${saved?.process === '洽談中' ? 'selected' : ''}>洽談中</option>
+                    <option value="已簽約" style="background-color: #dcfce7; color: #15803d;" ${saved?.process === '已簽約' ? 'selected' : ''}>已簽約</option>
+                    <option value="不考慮" style="background-color: #fee2e2; color: #b91c1c;" ${saved?.process === '不考慮' ? 'selected' : ''}>不考慮</option>
+                </select>
+            </td>
+            <td data-label="簽呈">
+                <select class="data-admin" onchange="updateAdminColor(this); saveAll()">
+                    <option value="尚未送簽" style="background-color: #ffffff; color: #94a3b8;" ${saved?.admin === '尚未送簽' ? 'selected' : ''}>尚未送簽</option>
+                    <option value="已送簽至副總" style="background-color: #fff7ed; color: #c2410c;" ${saved?.admin === '已送簽至副總' ? 'selected' : ''}>📝 已送簽副總</option>
+                    <option value="副總已核准" style="background-color: #f5f3ff; color: #6d28d9;" ${saved?.admin === '副總已核准' ? 'selected' : ''}>🏢 副總已核准</option>
+                    <option value="已送交會計" style="background-color: #f0fdfa; color: #0f766e;" ${saved?.admin === '已送交會計' ? 'selected' : ''}>💰 已送交會計</option>
+                    <option value="會計已撥款" style="background-color: #f97316; color: #ffffff;" ${saved?.admin === '會計已撥款' ? 'selected' : ''}>✅ 會計已撥款</option>
+                </select>
+            </td>
+            <td data-label="匯款">
+                <select onchange="saveAll()">
+                    <option value="">選擇日期</option>
+                    <option value="${m}/10" ${saved?.date === m+'/10' ? 'selected' : ''}>${m}/10</option>
+                    <option value="${m}/25" ${saved?.date === m+'/25' ? 'selected' : ''}>${m}/25</option>
+                    <option value="${nextM}/10" ${saved?.date === nextM+'/10' ? 'selected' : ''}>${nextM}/10</option>
+                    <option value="${nextM}/25" ${saved?.date === nextM+'/25' ? 'selected' : ''}>${nextM}/25</option>
+                </select>
+            </td>
+            <td class="th-action-cell"><button style="color:#fed7aa; border:none; background:none; cursor:pointer; font-size:24px;" onclick="removeRow(this)">&times;</button></td>
+        `;
+        tbody.appendChild(tr);
+        updateProcessColor(tr.querySelector('.data-process'));
+        updateAdminColor(tr.querySelector('.data-admin'));
+    }
+
+    function updateProcessColor(s) {
+        s.classList.remove('p-gray', 'p-blue', 'p-green', 'p-red');
+        const v = s.value;
+        if(v === "待聯繫") s.classList.add('p-gray');
+        else if(v === "洽談中") s.classList.add('p-blue');
+        else if(v === "已簽約") s.classList.add('p-green');
+        else if(v === "不考慮") s.classList.add('p-red');
+    }
+
+    function updateAdminColor(s) {
+        s.classList.remove('a-none', 'a-orange', 'a-purple', 'a-teal', 'a-final');
+        const v = s.value;
+        if(v.includes("已送簽")) s.classList.add('a-orange');
+        else if(v.includes("副總已核准")) s.classList.add('a-purple');
+        else if(v.includes("送交會計")) s.classList.add('a-teal');
+        else if(v.includes("會計已撥款")) s.classList.add('a-final');
+        else s.classList.add('a-none');
+    }
+
+    function cycleSort() {
+        const tbody = document.getElementById("tableBody");
+        const rows = Array.from(tbody.querySelectorAll("tr"));
+        const icon = document.getElementById("sortIcon");
+        sortState = (sortState + 1) % 3;
+        if (sortState === 0) {
+            icon.innerText = "🔃";
+            tbody.innerHTML = "";
+            const saved = JSON.parse(localStorage.getItem('kol_data_save') || "[]");
+            saved.forEach(item => addRow(item));
+            return;
+        }
+        rows.sort((a, b) => {
+            let valA = parseInt(a.querySelector(".data-price").value.replace(/,/g, "")) || 0;
+            let valB = parseInt(b.querySelector(".data-price").value.replace(/,/g, "")) || 0;
+            return sortState === 1 ? valB - valA : valA - valB;
+        });
+        icon.innerText = sortState === 1 ? "⬇️" : "⬆️";
+        rows.forEach(row => tbody.appendChild(row));
+    }
+
+    function formatCurrency(i) { let v = i.value.replace(/\D/g, ""); if (v !== "") i.value = Number(v).toLocaleString('en-US'); }
+    function unformatCurrency(i) { i.value = i.value.replace(/,/g, ""); }
+    function checkUrl(i) { 
+        const v = i.value.trim(); const b = i.nextElementSibling;
+        if (v.startsWith('http') || v.includes('.com')) { b.href = v.startsWith('http') ? v : 'https://' + v; b.classList.add('active'); } 
+        else b.classList.remove('active'); 
+    }
+    function removeRow(btn) { btn.parentElement.parentElement.remove(); saveAll(); }
+
+    function exportToExcel() {
+        let csvContent = "\ufeff姓名,IG,FB,報價,進度,狀態,匯款日\n";
+        document.querySelectorAll("#tableBody tr").forEach(row => {
+            const inputs = row.querySelectorAll("input, select");
+            let rowData = Array.from(inputs).map(i => i.value.replace(/,/g, ""));
+            csvContent += rowData.join(",") + "\n";
+        });
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = "KOL_Tracker.csv";
+        link.click();
+    }
+</script>
+
+</body>
+</html>
