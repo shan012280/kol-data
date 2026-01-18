@@ -26,7 +26,6 @@
         td { padding: 8px 4px; border-bottom: 1px solid #fff7ed; }
         input, select { width: 100%; height: 34px; border: 1px solid #fed7aa; padding: 0 8px; border-radius: 8px; font-size: 14px; box-sizing: border-box; outline: none; background: #fff; transition: all 0.2s ease; }
 
-        /* --- 色塊樣式 (預設與展開) --- */
         .p-gray { background-color: #f1f5f9 !important; color: #64748b !important; }
         .p-blue { background-color: #e0f2fe !important; color: #0369a1 !important; font-weight: bold; }
         .p-green { background-color: #dcfce7 !important; color: #15803d !important; font-weight: bold; }
@@ -84,11 +83,10 @@
 
 <script>
     let sortState = 0; 
-    let originalData = []; // 用於恢復原始順序
 
-    // 頁面開啟時讀取存檔
+    // 初始化讀取
     window.onload = function() {
-        const saved = localStorage.getItem('kol_data_v2');
+        const saved = localStorage.getItem('kol_data_final');
         if (saved) {
             const data = JSON.parse(saved);
             data.forEach(item => addRow(item));
@@ -97,7 +95,11 @@
         }
     };
 
-    // 核心：將所有欄位存入 localStorage
+    // 自動強制存檔機制 (當分頁被關閉時)
+    window.onbeforeunload = function() {
+        saveToLocal();
+    };
+
     function saveToLocal() {
         const rows = Array.from(document.querySelectorAll("#tableBody tr"));
         const data = rows.map(tr => {
@@ -112,7 +114,8 @@
                 date: inputs[6].value
             };
         });
-        localStorage.setItem('kol_data_v2', JSON.stringify(data));
+        localStorage.setItem('kol_data_final', JSON.stringify(data));
+        console.log("資料已即時存檔");
     }
 
     function addRow(saved = null) {
@@ -125,7 +128,7 @@
             <td data-label="姓名"><input type="text" value="${saved?.name || ''}" oninput="saveToLocal()" placeholder="姓名..."></td>
             <td data-label="IG"><div style="display:flex; gap:4px; width:100%;"><input type="text" value="${saved?.ig || ''}" oninput="checkUrl(this); saveToLocal()" placeholder="ig..."><a href="${saved?.ig || '#'}" target="_blank" class="jump-btn ${saved?.ig ? 'active' : ''}">🔗</a></div></td>
             <td data-label="FB"><div style="display:flex; gap:4px; width:100%;"><input type="text" value="${saved?.fb || ''}" oninput="checkUrl(this); saveToLocal()" placeholder="fb..."><a href="${saved?.fb || '#'}" target="_blank" class="jump-btn ${saved?.fb ? 'active' : ''}">🔗</a></div></td>
-            <td data-label="報價"><input type="text" class="data-price" value="${saved?.price || ''}" onblur="formatCurrency(this); saveToLocal()" onfocus="unformatCurrency(this)" placeholder="0"></td>
+            <td data-label="報價"><input type="text" class="data-price" value="${saved?.price || ''}" oninput="saveToLocal()" onblur="formatCurrency(this); saveToLocal()" onfocus="unformatCurrency(this)" placeholder="0"></td>
             <td data-label="進度">
                 <select class="data-process" onchange="updateProcessColor(this); saveToLocal()">
                     <option value="待聯繫" style="background-color: #f1f5f9;" ${saved?.process === '待聯繫' ? 'selected' : ''}>待聯繫</option>
@@ -188,7 +191,7 @@
         if (sortState === 0) {
             icon.innerText = "🔃";
             tbody.innerHTML = "";
-            const saved = JSON.parse(localStorage.getItem('kol_data_v2') || "[]");
+            const saved = JSON.parse(localStorage.getItem('kol_data_final') || "[]");
             saved.forEach(item => addRow(item));
             return;
         }
@@ -199,6 +202,7 @@
         });
         icon.innerText = sortState === 1 ? "⬇️" : "⬆️";
         rows.forEach(row => tbody.appendChild(row));
+        saveToLocal(); // 排序後也存檔
     }
 
     function formatCurrency(i) { let v = i.value.replace(/\D/g, ""); if (v !== "") i.value = Number(v).toLocaleString('en-US'); }
