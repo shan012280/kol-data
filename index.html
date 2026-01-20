@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KOL 專業數據管理面板</title>
+    <title>KOL 專業數據 management 面板</title>
     <style>
         :root { 
             --primary: #f97316; 
@@ -13,7 +13,7 @@
         }
 
         body { font-family: "PingFang TC", "Microsoft JhengHei", sans-serif; background: var(--bg); padding: 15px; margin: 0; color: var(--text-main); }
-        .card { background: white; border-radius: 16px; box-shadow: 0 4px 20px rgba(251, 146, 60, 0.1); padding: 18px; max-width: 1200px; margin: auto; }
+        .card { background: white; border-radius: 16px; box-shadow: 0 4px 20px rgba(251, 146, 60, 0.1); padding: 18px; max-width: 1300px; margin: auto; }
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #ffedd5; padding-bottom: 15px; flex-wrap: wrap; gap: 10px; }
         
         table { width: 100%; border-collapse: collapse; }
@@ -67,13 +67,15 @@
     <table id="kolTable">
         <thead>
             <tr>
-                <th style="width: 10%;" class="th-basic">姓名</th>
-                <th style="width: 15%;" class="th-basic">IG 連結</th>
-                <th style="width: 15%;" class="th-basic">FB 連結</th>
-                <th style="width: 12%;" class="th-data" onclick="cycleSort()">報價 (TWD) <span id="sortIcon">🔃</span></th>
-                <th style="width: 13%;" class="th-flow">合作進度</th>
-                <th style="width: 15%;" class="th-flow">簽呈狀態</th>
-                <th style="width: 15%;" class="th-flow">預計匯款日</th>
+                <th style="width: 8%;" class="th-basic">姓名</th>
+                <th style="width: 10%;" class="th-basic">IG 連結</th>
+                <th style="width: 10%;" class="th-basic">FB 連結</th>
+                <th style="width: 10%;" class="th-data">粉絲人數</th>
+                <th style="width: 10%;" class="th-data" onclick="cycleSort()">報價 (TWD) <span id="sortIcon">🔃</span></th>
+                <th style="width: 10%;" class="th-flow">合作進度</th>
+                <th style="width: 12%;" class="th-flow">簽呈狀態</th>
+                <th style="width: 10%;" class="th-flow">預計匯款日</th>
+                <th style="width: 15%;" class="th-basic">備註</th>
                 <th style="width: 5%;" class="th-action"></th>
             </tr>
         </thead>
@@ -95,7 +97,7 @@
         }
     };
 
-    // 自動強制存檔機制 (當分頁被關閉時)
+    // 自動強制存檔機制
     window.onbeforeunload = function() {
         saveToLocal();
     };
@@ -108,14 +110,15 @@
                 name: inputs[0].value,
                 ig: inputs[1].value,
                 fb: inputs[2].value,
-                price: inputs[3].value,
-                process: inputs[4].value,
-                admin: inputs[5].value,
-                date: inputs[6].value
+                fans: inputs[3].value,
+                price: inputs[4].value,
+                process: inputs[5].value,
+                admin: inputs[6].value,
+                date: inputs[7].value,
+                note: inputs[8].value // 備註
             };
         });
         localStorage.setItem('kol_data_final', JSON.stringify(data));
-        console.log("資料已即時存檔");
     }
 
     function addRow(saved = null) {
@@ -128,6 +131,7 @@
             <td data-label="姓名"><input type="text" value="${saved?.name || ''}" oninput="saveToLocal()" placeholder="姓名..."></td>
             <td data-label="IG"><div style="display:flex; gap:4px; width:100%;"><input type="text" value="${saved?.ig || ''}" oninput="checkUrl(this); saveToLocal()" placeholder="ig..."><a href="${saved?.ig || '#'}" target="_blank" class="jump-btn ${saved?.ig ? 'active' : ''}">🔗</a></div></td>
             <td data-label="FB"><div style="display:flex; gap:4px; width:100%;"><input type="text" value="${saved?.fb || ''}" oninput="checkUrl(this); saveToLocal()" placeholder="fb..."><a href="${saved?.fb || '#'}" target="_blank" class="jump-btn ${saved?.fb ? 'active' : ''}">🔗</a></div></td>
+            <td data-label="粉絲人數"><input type="text" value="${saved?.fans || ''}" oninput="saveToLocal()" placeholder="10k..."></td>
             <td data-label="報價"><input type="text" class="data-price" value="${saved?.price || ''}" oninput="saveToLocal()" onblur="formatCurrency(this); saveToLocal()" onfocus="unformatCurrency(this)" placeholder="0"></td>
             <td data-label="進度">
                 <select class="data-process" onchange="updateProcessColor(this); saveToLocal()">
@@ -148,13 +152,14 @@
             </td>
             <td data-label="匯款">
                 <select onchange="saveToLocal()">
-                    <option value="">選擇日期</option>
+                    <option value="">日期</option>
                     <option value="${m}/10" ${saved?.date === m+'/10' ? 'selected' : ''}>${m}/10</option>
                     <option value="${m}/25" ${saved?.date === m+'/25' ? 'selected' : ''}>${m}/25</option>
                     <option value="${nextM}/10" ${saved?.date === nextM+'/10' ? 'selected' : ''}>${nextM}/10</option>
                     <option value="${nextM}/25" ${saved?.date === nextM+'/25' ? 'selected' : ''}>${nextM}/25</option>
                 </select>
             </td>
+            <td data-label="備註"><input type="text" value="${saved?.note || ''}" oninput="saveToLocal()" placeholder="補充說明..."></td>
             <td style="text-align: center;"><button style="color:#fed7aa; border:none; background:none; cursor:pointer; font-size:24px;" onclick="removeRow(this)">&times;</button></td>
         `;
         tbody.appendChild(tr);
@@ -202,7 +207,7 @@
         });
         icon.innerText = sortState === 1 ? "⬇️" : "⬆️";
         rows.forEach(row => tbody.appendChild(row));
-        saveToLocal(); // 排序後也存檔
+        saveToLocal();
     }
 
     function formatCurrency(i) { let v = i.value.replace(/\D/g, ""); if (v !== "") i.value = Number(v).toLocaleString('en-US'); }
@@ -215,7 +220,7 @@
     function removeRow(btn) { if(confirm("確定刪除嗎？")) { btn.parentElement.parentElement.remove(); saveToLocal(); } }
 
     function exportToExcel() {
-        let csvContent = "\ufeff姓名,IG,FB,報價,進度,狀態,匯款日\n";
+        let csvContent = "\ufeff姓名,IG,FB,粉絲人數,報價,進度,狀態,匯款日,備註\n";
         document.querySelectorAll("#tableBody tr").forEach(row => {
             const inputs = row.querySelectorAll("input, select");
             let rowData = Array.from(inputs).map(i => i.value.replace(/,/g, ""));
